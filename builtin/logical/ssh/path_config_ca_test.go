@@ -160,6 +160,79 @@ func TestSSH_ConfigCAUpdateDelete(t *testing.T) {
 	}
 
 	caReq.Operation = logical.UpdateOperation
+	caReq.Data = map[string]interface{}{
+		"generate_signing_key": true,
+		"signing_key_type":     "rsa",
+	}
+
+	// Successfully create a new RSA keypair
+	resp, err = b.HandleRequest(context.Background(), caReq)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("bad: err: %v, resp:%v", err, resp)
+	}
+
+	caReq.Operation = logical.DeleteOperation
+	// Delete the configured keys
+	resp, err = b.HandleRequest(context.Background(), caReq)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("bad: err: %v, resp:%v", err, resp)
+	}
+
+	caReq.Operation = logical.UpdateOperation
+	caReq.Data = map[string]interface{}{
+		"generate_signing_key": true,
+		"signing_key_type":     "ecdsa",
+	}
+
+	// Successfully create a new ECDSA keypair
+	resp, err = b.HandleRequest(context.Background(), caReq)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("bad: err: %v, resp:%v", err, resp)
+	}
+
+	caReq.Operation = logical.DeleteOperation
+	// Delete the configured keys
+	resp, err = b.HandleRequest(context.Background(), caReq)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("bad: err: %v, resp:%v", err, resp)
+	}
+
+	caReq.Operation = logical.UpdateOperation
+	caReq.Data = map[string]interface{}{
+		"generate_signing_key": true,
+		"signing_key_type":     "ed25519",
+	}
+
+	// Successfully create a new Ed25519 keypair
+	resp, err = b.HandleRequest(context.Background(), caReq)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("bad: err: %v, resp:%v", err, resp)
+	}
+
+	caReq.Operation = logical.DeleteOperation
+	// Delete the configured keys
+	resp, err = b.HandleRequest(context.Background(), caReq)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("bad: err: %v, resp:%v", err, resp)
+	}
+
+	// Attempt to create keypair with an invalid signing_key_type
+	caReq.Operation = logical.UpdateOperation
+	caReq.Data = map[string]interface{}{
+		"generate_signing_key": true,
+		"signing_key_type":     "invalid",
+	}
+
+	// Fail to create a new keypair
+	resp, err = b.HandleRequest(context.Background(), caReq)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !resp.IsError() {
+		t.Fatalf("expected an error, got %#v", *resp)
+	}
+
+	caReq.Operation = logical.UpdateOperation
 	caReq.Data = nil
 
 	// Successfully create a new one

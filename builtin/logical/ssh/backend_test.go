@@ -631,6 +631,179 @@ func TestBackend_AbleToAutoGenerateSigningKeys(t *testing.T) {
 						return fmt.Errorf("public_key empty. Expected not empty, actual %s", key)
 					}
 
+					decodedKey, _ := base64.StdEncoding.DecodeString(strings.Split(key, " ")[1])
+
+					parsedKey, err := ssh.ParsePublicKey(decodedKey)
+					if err != nil {
+						return fmt.Errorf("Could not parse public key: %s", err)
+					}
+
+					if parsedKey.Type() != ssh.KeyAlgoRSA {
+						return fmt.Errorf("Wrong key type. Expected %s, actual %s", ssh.KeyAlgoRSA, parsedKey.Type())
+					}
+
+					return nil
+				},
+			},
+		},
+	}
+
+	logicaltest.Test(t, testCase)
+}
+
+func TestBackend_AbleToGenerateRsaSigningKeys(t *testing.T) {
+
+	config := logical.TestBackendConfig()
+
+	b, err := Factory(context.Background(), config)
+	if err != nil {
+		t.Fatalf("Cannot create backend: %s", err)
+	}
+
+	testCase := logicaltest.TestCase{
+		LogicalBackend: b,
+		Steps: []logicaltest.TestStep{
+			logicaltest.TestStep{
+				Operation: logical.UpdateOperation,
+				Path:      "config/ca",
+				Data: map[string]interface{}{
+					"generate_signing_key": true,
+					"signing_key_type":     "rsa",
+				},
+			},
+
+			logicaltest.TestStep{
+				Operation:       logical.ReadOperation,
+				Path:            "public_key",
+				Unauthenticated: true,
+
+				Check: func(resp *logical.Response) error {
+
+					key := string(resp.Data["http_raw_body"].([]byte))
+
+					if key == "" {
+						return fmt.Errorf("public_key empty. Expected not empty, actual %s", key)
+					}
+
+					decodedKey, _ := base64.StdEncoding.DecodeString(strings.Split(key, " ")[1])
+
+					parsedKey, err := ssh.ParsePublicKey(decodedKey)
+					if err != nil {
+						return fmt.Errorf("Could not parse public key: %s", err)
+					}
+
+					if parsedKey.Type() != ssh.KeyAlgoRSA {
+						return fmt.Errorf("Wrong key type. Expected %s, actual %s", ssh.KeyAlgoRSA, parsedKey.Type())
+					}
+
+					return nil
+				},
+			},
+		},
+	}
+
+	logicaltest.Test(t, testCase)
+}
+
+func TestBackend_AbleToGenerateEcdsaSigningKeys(t *testing.T) {
+
+	config := logical.TestBackendConfig()
+
+	b, err := Factory(context.Background(), config)
+	if err != nil {
+		t.Fatalf("Cannot create backend: %s", err)
+	}
+
+	testCase := logicaltest.TestCase{
+		LogicalBackend: b,
+		Steps: []logicaltest.TestStep{
+			logicaltest.TestStep{
+				Operation: logical.UpdateOperation,
+				Path:      "config/ca",
+				Data: map[string]interface{}{
+					"generate_signing_key": true,
+					"signing_key_type":     "ecdsa",
+				},
+			},
+
+			logicaltest.TestStep{
+				Operation:       logical.ReadOperation,
+				Path:            "public_key",
+				Unauthenticated: true,
+
+				Check: func(resp *logical.Response) error {
+
+					key := string(resp.Data["http_raw_body"].([]byte))
+
+					if key == "" {
+						return fmt.Errorf("public_key empty. Expected not empty, actual %s", key)
+					}
+
+					decodedKey, _ := base64.StdEncoding.DecodeString(strings.Split(key, " ")[1])
+
+					parsedKey, err := ssh.ParsePublicKey(decodedKey)
+					if err != nil {
+						return fmt.Errorf("Could not parse public key: %s", err)
+					}
+
+					if parsedKey.Type() != ssh.KeyAlgoECDSA256 {
+						return fmt.Errorf("Wrong key type. Expected %s, actual %s", ssh.KeyAlgoECDSA256, parsedKey.Type())
+					}
+
+					return nil
+				},
+			},
+		},
+	}
+
+	logicaltest.Test(t, testCase)
+}
+
+func TestBackend_AbleToGenerateEd25519SigningKeys(t *testing.T) {
+
+	config := logical.TestBackendConfig()
+
+	b, err := Factory(context.Background(), config)
+	if err != nil {
+		t.Fatalf("Cannot create backend: %s", err)
+	}
+
+	testCase := logicaltest.TestCase{
+		LogicalBackend: b,
+		Steps: []logicaltest.TestStep{
+			logicaltest.TestStep{
+				Operation: logical.UpdateOperation,
+				Path:      "config/ca",
+				Data: map[string]interface{}{
+					"generate_signing_key": true,
+					"signing_key_type":     "ed25519",
+				},
+			},
+
+			logicaltest.TestStep{
+				Operation:       logical.ReadOperation,
+				Path:            "public_key",
+				Unauthenticated: true,
+
+				Check: func(resp *logical.Response) error {
+
+					key := string(resp.Data["http_raw_body"].([]byte))
+
+					if key == "" {
+						return fmt.Errorf("public_key empty. Expected not empty, actual %s", key)
+					}
+
+					decodedKey, _ := base64.StdEncoding.DecodeString(strings.Split(key, " ")[1])
+
+					parsedKey, err := ssh.ParsePublicKey(decodedKey)
+					if err != nil {
+						return fmt.Errorf("Could not parse public key: %s", err)
+					}
+
+					if parsedKey.Type() != ssh.KeyAlgoED25519 {
+						return fmt.Errorf("Wrong key type. Expected %s, actual %s", ssh.KeyAlgoED25519, parsedKey.Type())
+					}
+
 					return nil
 				},
 			},

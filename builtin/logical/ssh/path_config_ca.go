@@ -2,6 +2,9 @@ package ssh
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"crypto/ed25519"
+	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -44,6 +47,10 @@ func pathConfigCA(b *backend) *framework.Path {
 				Type:        framework.TypeBool,
 				Description: `Generate SSH key pair internally rather than use the private_key and public_key fields.`,
 				Default:     true,
+			},
+			"signing_key_type": &framework.FieldSchema{
+				Type:        framework.TypeString,
+				Description: `SSH CA key type to be generated. Options are ecdsa, ed25519, or rsa. Default is rsa.`,
 			},
 		},
 
@@ -148,6 +155,7 @@ func (b *backend) pathConfigCAUpdate(ctx context.Context, req *logical.Request, 
 	var err error
 	publicKey := data.Get("public_key").(string)
 	privateKey := data.Get("private_key").(string)
+	signKeyType := data.Get("signing_key_type").(string)
 
 	var generateSigningKey bool
 
@@ -191,7 +199,10 @@ func (b *backend) pathConfigCAUpdate(ctx context.Context, req *logical.Request, 
 	}
 
 	if generateSigningKey {
-		publicKey, privateKey, err = generateSSHKeyPair()
+		if signKeyType == "" {
+			signKeyType = "rsa"
+		}
+		publicKey, privateKey, err = generateSSHKeyPair(signKeyType)
 		if err != nil {
 			return nil, err
 		}
@@ -265,19 +276,49 @@ func (b *backend) pathConfigCAUpdate(ctx context.Context, req *logical.Request, 
 	return nil, nil
 }
 
-func generateSSHKeyPair() (string, string, error) {
-	privateSeed, err := rsa.GenerateKey(rand.Reader, 4096)
+func generateSSHKeyPair(keyType string) (string, string, error) {
+	var blockType string
+	var err error
+	var marshaledBytes []byte
+
+	switch keyType {
+	case "rsa":
+		blockType = "RSA PRIVATE KEY"
+		privateSeed, err := rsa.GenerateKey(rand.Reader, 4096)
+		if err == nil {
+			marshaledBytes, err = x509.MarshalPKCS8PrivateKey(privateSeed)
+		}
+	case "ecdsa":
+		blockType = "EC PRIVATE KEY"
+		privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		if err == nil {
+			marshaledBytes, err = x509.MarshalPKCS8PrivateKey(&privateKey)
+		}
+	case "ed25519":
+		blockType = "PRIVATE KEY"
+		_, privateKey, err := ed25519.GenerateKey(rand.Reader)
+		if err == nil {
+			marshaledBytes, err = x509.MarshalPKCS8PrivateKey(&privateKey)
+		}
+	default:
+		return "", "", fmt.Errorf("Invalid SSH CA signer key type. Options are ecdsa, ed25519, or rsa.")
+	}
 	if err != nil {
 		return "", "", err
 	}
 
 	privateBlock := &pem.Block{
-		Type:    "RSA PRIVATE KEY",
+		Type:    blockType,
 		Headers: nil,
-		Bytes:   x509.MarshalPKCS1PrivateKey(privateSeed),
+		Bytes:   marshaledBytes,
 	}
 
-	public, err := ssh.NewPublicKey(&privateSeed.PublicKey)
+	publicKey, err := x509.ParsePKCS8PrivateKey(marshaledBytes)
+	if err != nil {
+		return "", "", err
+	}
+
+	public, err := ssh.NewPublicKey(&publicKey)
 	if err != nil {
 		return "", "", err
 	}
